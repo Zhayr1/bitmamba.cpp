@@ -66,6 +66,16 @@ make -j
 
 ### 3. Running Inference
 
+#### 3.1  Download Weights (from Hugging Face)
+BitMamba-2 1B
+```bash
+wget https://huggingface.co/Zhayr1/BitMamba-2-1B/resolve/main/bitmamba_cpp/bitmamba_1b.bin
+```
+BitMamba-2 0.25B
+```bash
+wget https://huggingface.co/Zhayr1/BitMamba-2-0.25B/resolve/main/bitmamba_cpp/bitmamba_255m.bin
+```
+
 Once you have the binary model (`.bin`) and the compiled executable, use the exported binary to run inference.
 
 **Example command:**
