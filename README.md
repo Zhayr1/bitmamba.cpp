@@ -83,6 +83,22 @@ Or in build folder:
 
 _This command runs the `bitmamba_1b.bin` model with a tokenized prompt, temperature 0.7, repetition penalty 1.1, generating 200 tokens._
 
+### 4. Decoding Tokens
+
+Use the `decoder.py` script to convert token IDs back into text.
+
+**Usage:**
+
+```bash
+python decoder.py "tokens"
+```
+
+**Example:**
+
+```bash
+python decoder.py "15496 11 314 716"
+```
+
 ### TODO
 
 - Future Work: Add ARM/NEON support for Raspberry Pi deployment.
