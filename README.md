@@ -27,13 +27,13 @@ Use the `export_bin.py` script to convert your PyTorch/JAX checkpoints to the op
 #### Example for 1B version:
 
 ```bash
-python3 export_bin.py --version 1b --ckpt_path ../bit_mamba_1B/checkpoints/ckpt_1b.msgpack --output_name bitmamba_1b.bin
+python3 export_bin.py --version 1b --ckpt_path ./bitmamba_1b.msgpack --output_name bitmamba_1b.bin
 ```
 
 #### Example for 250M version:
 
 ```bash
-python3 export_bin.py --version 250m --ckpt_path ../bit_mamba_250m/checkpoints/ckpt_250m.msgpack --output_name bitmamba_250m.bin
+python3 export_bin.py --version 250m --ckpt_path ./bitmamba_250m.msgpack --output_name bitmamba_250m.bin
 ```
 
 ---
