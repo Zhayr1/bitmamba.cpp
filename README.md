@@ -2,6 +2,11 @@
 
 This library is designed for efficient inference using **BitMamba2** models with **255M** and **1B** parameters. It implements support for quantization and BitNet-optimized architectures.
 
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![DOI](https://img.shields.io/badge/Paper-Zenodo-00649C.svg)](https://doi.org/10.5281/zenodo.18394665)
+[![Hugging Face 1B](https://img.shields.io/badge/%F0%9F%A4%97%20Weights-1B%20Model-FFD21E)](https://huggingface.co/Zhayr1/BitMamba-2-1B)
+[![Hugging Face 255M](https://img.shields.io/badge/%F0%9F%A4%97%20Weights-255M%20Model-FFD21E)](https://huggingface.co/Zhayr1/BitMamba-2-0.25B)
+
 ## Requirements and compatibility
 
 ⚠️ Hardware Requirements: This C++ implementation utilizes AVX2 SIMD instructions for high-performance inference on x86 CPUs (Intel/AMD).
@@ -60,6 +65,16 @@ make -j
 ```
 
 ### 3. Running Inference
+
+#### 3.1  Download Weights (from Hugging Face)
+BitMamba-2 1B
+```bash
+wget https://huggingface.co/Zhayr1/BitMamba-2-1B/resolve/main/bitmamba_cpp/bitmamba_1b.bin
+```
+BitMamba-2 0.25B
+```bash
+wget https://huggingface.co/Zhayr1/BitMamba-2-0.25B/resolve/main/bitmamba_cpp/bitmamba_255m.bin
+```
 
 Once you have the binary model (`.bin`) and the compiled executable, use the exported binary to run inference.
 
