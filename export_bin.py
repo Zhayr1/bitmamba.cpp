@@ -2,18 +2,10 @@ import struct
 import numpy as np
 import os
 import sys
-from fast_inference import load_checkpoint
-from tqdm import tqdm  # pip install tqdm
-from bit_mamba_torch import BitMambaLM
-
-# Configuration 1B
-CONFIG_1B = { "vocab_size": 50257, "d_model": 2048, "n_layers": 32, "n_heads": 32 }
-CONFIG_250M = {
-     "vocab_size": 50257,
-     "d_model": 1024,
-     "n_heads": 16,
-     "n_layers": 24
-}
+from loader import load_checkpoint
+from tqdm import tqdm
+from config import CONFIG_1B, CONFIG_255M
+from torch_model import BitMambaLM
 
 def pack_ternary_weights(weights, layer_name):
     """
@@ -161,7 +153,7 @@ if __name__ == "__main__":
     if args.version == "1b":
         config = CONFIG_1B
     else:
-        config = CONFIG_250M
+        config = CONFIG_255M
         
     model = BitMambaLM(**config)
     load_checkpoint(model, ckpt_path) 

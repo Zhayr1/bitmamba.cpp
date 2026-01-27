@@ -1,6 +1,4 @@
-import sys
 import argparse
-# Suppress unnecessary library warnings to keep output clean
 import logging
 logging.getLogger("transformers").setLevel(logging.ERROR)
 
