@@ -3,13 +3,10 @@ import torch.nn.functional as F
 import numpy as np
 from flax.serialization import msgpack_restore 
 import re
-import gc
-import sys
-import time
 import argparse
 import types
 from transformers import AutoTokenizer, TextStreamer # <--- Agrega TextStreamer
-# Dynamic imports below
+from bit_mamba_torch import BitMambaLM, BitLinear
 
 
 # --- CONFIGURATION ---
@@ -268,10 +265,8 @@ if __name__ == "__main__":
 
     # Dynamic Import based on version
     if args.version == "1b":
-        from bit_mamba_torch import BitMambaLM, BitLinear
         config = CONFIG_1B
     else:
-        from bit_mamba_torch_250m import BitMambaLM, BitLinear
         config = CONFIG_255M
 
     tokenizer = AutoTokenizer.from_pretrained("gpt2")

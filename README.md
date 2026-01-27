@@ -102,3 +102,19 @@ python decoder.py "15496 11 314 716"
 ### TODO
 
 - Future Work: Add ARM/NEON support for Raspberry Pi deployment.
+
+## Python Inference Evaluation test
+
+Use the `fast_inference.py` script to evaluate the models:
+
+### 250M Version
+
+```bash
+python fast_inference.py --ckpt bitmamba_250m.msgpack --version 250m --eval
+```
+
+### 1B Version
+
+```bash
+python fast_inference.py --ckpt bitmamba_1b.msgpack --version 1b --eval
+```

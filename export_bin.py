@@ -2,9 +2,9 @@ import struct
 import numpy as np
 import os
 import sys
-import torch
 from fast_inference import load_checkpoint
 from tqdm import tqdm  # pip install tqdm
+from bit_mamba_torch import BitMambaLM
 
 # Configuration 1B
 CONFIG_1B = { "vocab_size": 50257, "d_model": 2048, "n_layers": 32, "n_heads": 32 }
@@ -159,10 +159,8 @@ if __name__ == "__main__":
     print(f"🏗️  Loading PyTorch model ({args.version})...")
     
     if args.version == "1b":
-        from bit_mamba_torch import BitMambaLM
         config = CONFIG_1B
     else:
-        from bit_mamba_torch_250m import BitMambaLM
         config = CONFIG_250M
         
     model = BitMambaLM(**config)
