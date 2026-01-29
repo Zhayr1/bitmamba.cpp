@@ -116,7 +116,7 @@ Raw mode:
 ./build/bitmamba bitmamba_1b.bin "15496 11 314 716" raw 0.7 1.1 0.05 0.9 40 200
 ```
 
-⚠️ IMPORTANT: the tokenizer.bin file must be in the same directory as the bitmamba compiled executable.
+⚠️ IMPORTANT: the tokenizer.bin file must be in your current directory when you run the command.
 
 _This command runs the `bitmamba_1b.bin` model with a tokenized prompt, temperature 0.7, repetition penalty 1.1, generating 200 tokens._
 
