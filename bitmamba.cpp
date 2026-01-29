@@ -10,7 +10,7 @@
 #include <random>
 #include <immintrin.h>
 #include <sstream>
-
+#include "tokenizer.h"
 // --- MONITORING FUNCTIONS ---
 
 // Get current RAM usage of the process in MB (Linux)
@@ -372,6 +372,17 @@ public:
     }
 };
 
+// Load tokenizer from binary vocabulary file
+static gten::GPT2Tokenizer load_tokenizer(const std::string& vocab_file_path) {
+    std::ifstream vin(vocab_file_path, std::ios::binary);
+    if (!vin.is_open()) {
+        std::cerr << "Error: tokenizer.bin not found: " 
+                  << vocab_file_path << "\n";
+        exit(1);
+    }
+    return gten::GPT2Tokenizer{vin};
+}
+
 int main(int argc, char** argv) {
     if (argc < 3) {
         std::cerr << "Usage: " << argv[0] << " <model.bin> <input_tokens> [temp] [penalty] [min_p] [top_p] [top_k] [max_tokens]" << std::endl;
@@ -408,17 +419,11 @@ int main(int argc, char** argv) {
     double ram_after_model = get_memory_usage_mb();
     std::cerr << "[INFO] RAM after loading model: " << ram_after_model << " MB (model: " << (ram_after_model - ram_before_model) << " MB)" << std::endl;
     
-    // Parse input tokens
-    std::vector<int> prompt_ids;
-    std::string prompt_str = argv[2];
-    std::string delimiter = " ";
-    size_t pos = 0;
-    while ((pos = prompt_str.find(delimiter)) != std::string::npos) {
-        std::string t = prompt_str.substr(0, pos);
-        if (!t.empty()) prompt_ids.push_back(std::stoi(t));
-        prompt_str.erase(0, pos + delimiter.length());
-    }
-    if (!prompt_str.empty()) prompt_ids.push_back(std::stoi(prompt_str));
+    auto tokenizer = load_tokenizer("tokenizer.bin");
+
+    // Encode the input text to tokens
+    std::string prompt_text = argv[2];
+    std::vector<int32_t> prompt_ids = tokenizer.encode(prompt_text);
 
     std::cerr << "[INFO] Input Tokens (" << prompt_ids.size() << "): ";
     for (int id : prompt_ids) std::cerr << id << " ";
@@ -488,10 +493,10 @@ int main(int argc, char** argv) {
         if (next == 50256 || next == 0) break; 
     }
     
-    // Show ALL generated tokens with clear separators
-    std::cout << "\n=== Inference ===" << std::endl;
+    // Show ALL generated tokens decoded to text
+    std::cout << "\n=== Generated Text ===" << std::endl;
     for (int token : generated_tokens) {
-        std::cout << token << " ";
+        std::cout << tokenizer.decode(token);
     }
     std::cout << "\n=== End Inference ===" << std::endl;
     
