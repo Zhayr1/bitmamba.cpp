@@ -66,12 +66,16 @@ make -j
 
 ### 3. Running Inference
 
-#### 3.1  Download Weights (from Hugging Face)
+#### 3.1 Download Weights (from Hugging Face)
+
 BitMamba-2 1B
+
 ```bash
 wget https://huggingface.co/Zhayr1/BitMamba-2-1B/resolve/main/bitmamba_cpp/bitmamba_1b.bin
 ```
+
 BitMamba-2 0.25B
+
 ```bash
 wget https://huggingface.co/Zhayr1/BitMamba-2-0.25B/resolve/main/bitmamba_cpp/bitmamba_255m.bin
 ```
@@ -86,21 +90,39 @@ Once you have the binary model (`.bin`) and the compiled executable, use the exp
 
 #### Practical Example:
 
-```bash
-./bitmamba bitmamba_1b.bin "15496 11 314 716" 0.7 1.1 0.05 0.9 40 200
-```
-
-Or in build folder:
+Tokenizer mode:
 
 ```bash
-./bitmamba ../bitmamba_1b.bin "15496 11 314 716" 0.7 1.1 0.05 0.9 40 200
+./bitmamba bitmamba_1b.bin "Hello, I am" tokenizer 0.7 1.1 0.05 0.9 40 200
 ```
+
+Raw mode:
+
+```bash
+./bitmamba bitmamba_1b.bin "15496 11 314 716" raw 0.7 1.1 0.05 0.9 40 200
+```
+
+Or if you build with CMake:
+
+Tokenizer mode:
+
+```bash
+./build/bitmamba bitmamba_1b.bin "Hello, I am" tokenizer 0.7 1.1 0.05 0.9 40 200
+```
+
+Raw mode:
+
+```bash
+./build/bitmamba bitmamba_1b.bin "15496 11 314 716" raw 0.7 1.1 0.05 0.9 40 200
+```
+
+⚠️ IMPORTANT: the tokenizer.bin file must be in the same directory as the bitmamba compiled executable.
 
 _This command runs the `bitmamba_1b.bin` model with a tokenized prompt, temperature 0.7, repetition penalty 1.1, generating 200 tokens._
 
 ### 4. Decoding Tokens
 
-Use the `decoder.py` script to convert token IDs back into text.
+If you use raw mode, you can use the `decoder.py` script to convert token IDs back into text.
 
 **Usage:**
 
@@ -122,14 +144,28 @@ python decoder.py "15496 11 314 716"
 
 Use the `fast_inference.py` script to evaluate the models:
 
+### Get the weights
+
+Weights for 250M version:
+
+```bash
+wget https://huggingface.co/Zhayr1/BitMamba-2-0.25B/resolve/main/jax_weights/bitmamba_255m.msgpack
+```
+
+Weights for 1B version:
+
+```bash
+wget https://huggingface.co/Zhayr1/BitMamba-2-1B/resolve/main/jax_weights/bit_mamba_1b.msgpack
+```
+
 ### 250M Version
 
 ```bash
-python fast_inference.py --ckpt bitmamba_250m.msgpack --version 250m --eval
+python fast_inference.py --ckpt bitmamba_255m.msgpack --version 250m --eval
 ```
 
 ### 1B Version
 
 ```bash
-python fast_inference.py --ckpt bitmamba_1b.msgpack --version 1b --eval
+python fast_inference.py --ckpt bit_mamba_1b.msgpack --version 1b --eval
 ```

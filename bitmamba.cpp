@@ -384,31 +384,43 @@ static gten::GPT2Tokenizer load_tokenizer(const std::string& vocab_file_path) {
 }
 
 int main(int argc, char** argv) {
-    if (argc < 3) {
-        std::cerr << "Usage: " << argv[0] << " <model.bin> <input_tokens> [temp] [penalty] [min_p] [top_p] [top_k] [max_tokens]" << std::endl;
+    if (argc < 4) {
+        std::cerr << "Usage: " << argv[0] << " <model.bin> <input> <mode> [temp] [penalty] [min_p] [top_p] [top_k] [max_tokens]" << std::endl;
         std::cerr << "\nParameters:" << std::endl;
-        std::cerr << "  model.bin     - Path to model file" << std::endl;
-        std::cerr << "  input_tokens  - Token IDs separated by spaces (e.g., \"15496 11 314 716\")" << std::endl;
-        std::cerr << "  temp          - Temperature (default: 0.8)" << std::endl;
-        std::cerr << "  penalty       - Repetition Penalty (default: 1.15)" << std::endl;
-        std::cerr << "  min_p         - Min-P sampling (default: 0.05)" << std::endl;
-        std::cerr << "  top_p         - Top-P/nucleus sampling (default: 0.90)" << std::endl;
-        std::cerr << "  top_k         - Top-K sampling (default: 40)" << std::endl;
-        std::cerr << "  max_tokens    - Max tokens to generate (default: 400)" << std::endl;
-        std::cerr << "\nExample: ./bitmamba model.bin \"15496 11 314 716\" 0.7 1.1 0.05 0.9 40 200" << std::endl;
-        std::cerr << "\nNote: Input and output are numeric token IDs." << std::endl;
-        std::cerr << "      Use an external tokenizer (Python) to convert text <-> tokens." << std::endl;
+        std::cerr << "  model.bin   - Path to model file" << std::endl;
+        std::cerr << "  input       - Input text (tokenizer mode) or token IDs (raw mode)" << std::endl;
+        std::cerr << "  mode        - 'tokenizer' (text input/output) or 'raw' (token IDs input/output)" << std::endl;
+        std::cerr << "  temp        - Temperature (default: 0.8)" << std::endl;
+        std::cerr << "  penalty     - Repetition Penalty (default: 1.15)" << std::endl;
+        std::cerr << "  min_p       - Min-P sampling (default: 0.05)" << std::endl;
+        std::cerr << "  top_p       - Top-P/nucleus sampling (default: 0.90)" << std::endl;
+        std::cerr << "  top_k       - Top-K sampling (default: 40)" << std::endl;
+        std::cerr << "  max_tokens  - Max tokens to generate (default: 400)" << std::endl;
+        std::cerr << "\nExamples:" << std::endl;
+        std::cerr << "  Tokenizer mode: ./bitmamba model.bin \"Hello, I am\" tokenizer 0.7 1.1" << std::endl;
+        std::cerr << "  Raw mode:       ./bitmamba model.bin \"15496 11 314 716\" raw 0.7 1.1" << std::endl;
         return 1;
     }
 
+    // Validate mode argument
+    std::string mode = argv[3];
+    if (mode != "tokenizer" && mode != "raw") {
+        std::cerr << "Error: Invalid mode '" << mode << "'" << std::endl;
+        std::cerr << "Mode must be either 'tokenizer' or 'raw'" << std::endl;
+        std::cerr << "  tokenizer - Text input/output (uses GPT-2 tokenizer)" << std::endl;
+        std::cerr << "  raw       - Token IDs input/output (numeric)" << std::endl;
+        return 1;
+    }
+    bool use_tokenizer = (mode == "tokenizer");
+
     float temp = 0.8f; float penalty = 1.15f; float min_p = 0.05f; float top_p = 0.90f; int top_k = 40;
     int max_tokens = 400;
-    if (argc > 3) temp = std::stof(argv[3]);
-    if (argc > 4) penalty = std::stof(argv[4]);
-    if (argc > 5) min_p = std::stof(argv[5]);
-    if (argc > 6) top_p = std::stof(argv[6]);
-    if (argc > 7) top_k = std::stoi(argv[7]);
-    if (argc > 8) max_tokens = std::stoi(argv[8]);
+    if (argc > 4) temp = std::stof(argv[4]);
+    if (argc > 5) penalty = std::stof(argv[5]);
+    if (argc > 6) min_p = std::stof(argv[6]);
+    if (argc > 7) top_p = std::stof(argv[7]);
+    if (argc > 8) top_k = std::stoi(argv[8]);
+    if (argc > 9) max_tokens = std::stoi(argv[9]);
 
     // Measure RAM before loading model
     double ram_before_model = get_memory_usage_mb();
@@ -419,11 +431,38 @@ int main(int argc, char** argv) {
     double ram_after_model = get_memory_usage_mb();
     std::cerr << "[INFO] RAM after loading model: " << ram_after_model << " MB (model: " << (ram_after_model - ram_before_model) << " MB)" << std::endl;
     
-    auto tokenizer = load_tokenizer("tokenizer.bin");
+    // Initialize tokenizer only if needed
+    gten::GPT2Tokenizer tokenizer;
+    if (use_tokenizer) {
+        tokenizer = load_tokenizer("tokenizer.bin");
+    }
 
-    // Encode the input text to tokens
-    std::string prompt_text = argv[2];
-    std::vector<int32_t> prompt_ids = tokenizer.encode(prompt_text);
+    // Parse input based on mode
+    std::vector<int32_t> prompt_ids;
+    std::string input_str = argv[2];
+    
+    if (use_tokenizer) {
+        // Tokenizer mode: encode text to tokens
+        prompt_ids = tokenizer.encode(input_str);
+        std::cerr << "[INFO] Input Text: \"" << input_str << "\"" << std::endl;
+    } else {
+        // Raw mode: parse space-separated token IDs
+        std::string delimiter = " ";
+        size_t pos = 0;
+        try {
+            while ((pos = input_str.find(delimiter)) != std::string::npos) {
+                std::string t = input_str.substr(0, pos);
+                if (!t.empty()) prompt_ids.push_back(std::stoi(t));
+                input_str.erase(0, pos + delimiter.length());
+            }
+            if (!input_str.empty()) prompt_ids.push_back(std::stoi(input_str));
+        } catch (const std::invalid_argument& e) {
+            std::cerr << "Error: Invalid input for raw mode. Expected space-separated token IDs (numbers)." << std::endl;
+            std::cerr << "Example: \"15496 11 314 716\"" << std::endl;
+            std::cerr << "If you want to use text input, use 'tokenizer' mode instead." << std::endl;
+            return 1;
+        }
+    }
 
     std::cerr << "[INFO] Input Tokens (" << prompt_ids.size() << "): ";
     for (int id : prompt_ids) std::cerr << id << " ";
@@ -493,12 +532,20 @@ int main(int argc, char** argv) {
         if (next == 50256 || next == 0) break; 
     }
     
-    // Show ALL generated tokens decoded to text
-    std::cout << "\n=== Generated Text ===" << std::endl;
-    for (int token : generated_tokens) {
-        std::cout << tokenizer.decode(token);
+    // Output based on mode
+    if (use_tokenizer) {
+        std::cout << "\n=== Generated Text ===" << std::endl;
+        for (int token : generated_tokens) {
+            std::cout << tokenizer.decode(token);
+        }
+        std::cout << "\n=== End Inference ===" << std::endl;
+    } else {
+        std::cout << "\n=== Generated Token IDs ===" << std::endl;
+        for (int token : generated_tokens) {
+            std::cout << token << " ";
+        }
+        std::cout << "\n=== End Inference ===" << std::endl;
     }
-    std::cout << "\n=== End Inference ===" << std::endl;
     
     // Print final summary
     stats.print_summary();
