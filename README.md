@@ -47,21 +47,23 @@ python3 export_bin.py --version 250m --ckpt_path ./bitmamba_250m.msgpack --outpu
 
 ### Option 1: Quick Build (Linux/WSL)
 
-If you have `g++` installed, you can compile directly:
-
-```bash
-g++ -O3 -march=native -fopenmp -o bitmamba bitmamba.cpp
-```
-
-### Option 2: Using CMake (Recommended for cross-platform)
+### Option 1: Using CMake (Recommended)
 
 Ensure you have CMake installed (sudo apt install cmake or equivalent).
 
 ```bash
-mkdir build
-cd build
-cmake ..
-make -j
+cmake -B build
+cmake --build build
+```
+
+The executable will be located at `build/bitmamba_cli`.
+
+### Option 2: Quick Build (Manual)
+
+If you prefer `g++`:
+
+```bash
+g++ -O3 -march=native -fopenmp -Iinclude -Isrc -o bitmamba_cli examples/main.cpp src/*.cpp
 ```
 
 ### 3. Running Inference
@@ -106,14 +108,15 @@ Or if you build with CMake:
 
 Tokenizer mode:
 
+````bash
 ```bash
-./build/bitmamba bitmamba_1b.bin "Hello, I am" tokenizer 0.7 1.1 0.05 0.9 40 200
-```
+./build/bitmamba_cli bitmamba_1b.bin "Hello, I am" tokenizer 0.7 1.1 0.05 0.9 40 200
+````
 
 Raw mode:
 
 ```bash
-./build/bitmamba bitmamba_1b.bin "15496 11 314 716" raw 0.7 1.1 0.05 0.9 40 200
+./build/bitmamba_cli bitmamba_1b.bin "15496 11 314 716" raw 0.7 1.1 0.05 0.9 40 200
 ```
 
 ⚠️ IMPORTANT: the tokenizer.bin file must be in the same directory as the bitmamba compiled executable.

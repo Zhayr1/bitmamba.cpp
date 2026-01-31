@@ -1,33 +1,28 @@
 cmake_minimum_required(VERSION 3.10)
+project(BitMamba2 LANGUAGES CXX)
 
-# Project name
-project(BitMamba2 VERSION 1.0 LANGUAGES CXX)
-
-# Use C++17 standard
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
-# Find OpenMP library (Vital for multi-core performance)
-find_package(OpenMP REQUIRED)
+# Optimization flags
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -O3 -march=native -fopenmp")
 
-# Aggressive optimizations depending on compiler
-if(MSVC)
-    # Flags for Windows (Visual Studio)
-    add_compile_options(/O2 /arch:AVX2)
-else()
-    # Flags for GCC/Clang (Linux/Mac)
-    # -O3: Max optimization
-    # -march=native: Use CPU specific instructions (AVX2, FMA)
-    # -ffast-math: Small loss of precision for speed (common in AI)
-    add_compile_options(-O3 -march=native -ffast-math -Wall)
-endif()
+# Include directories
+include_directories(include)
+include_directories(src) # For tokenizer.h
 
-# Define executable
-add_executable(bitmamba bitmamba.cpp)
+# Core library
+add_library(bitmamba
+    src/basic_utils.cpp
+    src/quantization.cpp
+    src/kernels.cpp
+    src/block.cpp
+    src/model.cpp
+)
 
-# Link OpenMP to executable
-if(OpenMP_CXX_FOUND)
-    target_link_libraries(bitmamba PUBLIC OpenMP::OpenMP_CXX)
-endif()
+# CLI Executable
+add_executable(bitmamba_cli
+    examples/main.cpp
+)
 
-message(STATUS "Build config: Release mode with AVX2 & OpenMP enabled.")
+target_link_libraries(bitmamba_cli bitmamba)
