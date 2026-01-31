@@ -21,7 +21,7 @@ Note: The architectural efficiency (250MB RAM usage) makes it theoretically idea
 
 ### 1. Exporting the Model
 
-Use the `export_bin.py` script to convert your PyTorch/JAX checkpoints to the optimized C++ binary format.
+Use the `scripts/export_bin.py` script to convert your PyTorch/JAX checkpoints to the optimized C++ binary format.
 
 **Arguments:**
 
@@ -32,20 +32,18 @@ Use the `export_bin.py` script to convert your PyTorch/JAX checkpoints to the op
 #### Example for 1B version:
 
 ```bash
-python3 export_bin.py --version 1b --ckpt_path ./bitmamba_1b.msgpack --output_name bitmamba_1b.bin
+python3 scripts/export_bin.py --version 1b --ckpt_path ./bitmamba_1b.msgpack --output_name bitmamba_1b.bin
 ```
 
 #### Example for 250M version:
 
 ```bash
-python3 export_bin.py --version 250m --ckpt_path ./bitmamba_250m.msgpack --output_name bitmamba_250m.bin
+python3 scripts/export_bin.py --version 250m --ckpt_path ./bitmamba_250m.msgpack --output_name bitmamba_250m.bin
 ```
 
 ---
 
 ### 2. Compile the C++ Inference Engine
-
-### Option 1: Quick Build (Linux/WSL)
 
 ### Option 1: Using CMake (Recommended)
 
@@ -56,14 +54,14 @@ cmake -B build
 cmake --build build
 ```
 
-The executable will be located at `build/bitmamba_cli`.
+The executable will be located at `build/bitmamba`.
 
 ### Option 2: Quick Build (Manual)
 
 If you prefer `g++`:
 
 ```bash
-g++ -O3 -march=native -fopenmp -Iinclude -Isrc -o bitmamba_cli examples/main.cpp src/*.cpp
+g++ -O3 -march=native -fopenmp -Iinclude -Isrc -o bitmamba examples/main.cpp src/*.cpp
 ```
 
 ### 3. Running Inference
@@ -87,10 +85,26 @@ Once you have the binary model (`.bin`) and the compiled executable, use the exp
 **Example command:**
 
 ```bash
-./bitmamba <model.bin> "<prompt_tokens>" <temp> <repeat_penalty> <top_p> <top_k> <max_tokens> <seed>
+./build/bitmamba <model.bin> "<prompt_tokens>" <temp> <repeat_penalty> <top_p> <top_k> <max_tokens> <seed>
 ```
 
 #### Practical Example:
+
+##### CMake Build
+
+Tokenizer mode:
+
+```bash
+./build/bitmamba bitmamba_1b.bin "Hello, I am" tokenizer 0.7 1.1 0.05 0.9 40 200
+```
+
+Raw mode:
+
+```bash
+./build/bitmamba bitmamba_1b.bin "15496 11 314 716" raw 0.7 1.1 0.05 0.9 40 200
+```
+
+##### Manual Build
 
 Tokenizer mode:
 
@@ -104,39 +118,24 @@ Raw mode:
 ./bitmamba bitmamba_1b.bin "15496 11 314 716" raw 0.7 1.1 0.05 0.9 40 200
 ```
 
-Or if you build with CMake:
-
-Tokenizer mode:
-
-````bash
-```bash
-./build/bitmamba_cli bitmamba_1b.bin "Hello, I am" tokenizer 0.7 1.1 0.05 0.9 40 200
-````
-
-Raw mode:
-
-```bash
-./build/bitmamba_cli bitmamba_1b.bin "15496 11 314 716" raw 0.7 1.1 0.05 0.9 40 200
-```
-
 ⚠️ IMPORTANT: the tokenizer.bin file must be in the same directory as the bitmamba compiled executable.
 
 _This command runs the `bitmamba_1b.bin` model with a tokenized prompt, temperature 0.7, repetition penalty 1.1, generating 200 tokens._
 
 ### 4. Decoding Tokens
 
-If you use raw mode, you can use the `decoder.py` script to convert token IDs back into text.
+If you use raw mode, you can use the `scripts/decoder.py` script to convert token IDs back into text.
 
 **Usage:**
 
 ```bash
-python decoder.py "tokens"
+python scripts/decoder.py "tokens"
 ```
 
 **Example:**
 
 ```bash
-python decoder.py "15496 11 314 716"
+python scripts/decoder.py "15496 11 314 716"
 ```
 
 ### TODO
@@ -145,7 +144,7 @@ python decoder.py "15496 11 314 716"
 
 ## Python Inference Evaluation test
 
-Use the `fast_inference.py` script to evaluate the models:
+Use the `scripts/fast_inference.py` script to evaluate the models:
 
 ### Get the weights
 
@@ -164,11 +163,11 @@ wget https://huggingface.co/Zhayr1/BitMamba-2-1B/resolve/main/jax_weights/bit_ma
 ### 250M Version
 
 ```bash
-python fast_inference.py --ckpt bitmamba_255m.msgpack --version 250m --eval
+python scripts/fast_inference.py --ckpt bitmamba_255m.msgpack --version 250m --eval
 ```
 
 ### 1B Version
 
 ```bash
-python fast_inference.py --ckpt bit_mamba_1b.msgpack --version 1b --eval
+python scripts/fast_inference.py --ckpt bit_mamba_1b.msgpack --version 1b --eval
 ```

@@ -12,7 +12,7 @@ include_directories(include)
 include_directories(src) # For tokenizer.h
 
 # Core library
-add_library(bitmamba
+add_library(bitmamba_lib
     src/basic_utils.cpp
     src/quantization.cpp
     src/kernels.cpp
@@ -21,8 +21,8 @@ add_library(bitmamba
 )
 
 # CLI Executable
-add_executable(bitmamba_cli
+add_executable(bitmamba
     examples/main.cpp
 )
 
-target_link_libraries(bitmamba_cli bitmamba)
+target_link_libraries(bitmamba bitmamba_lib)
