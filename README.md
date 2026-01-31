@@ -85,7 +85,7 @@ Once you have the binary model (`.bin`) and the compiled executable, use the exp
 **Example command:**
 
 ```bash
-./build/bitmamba <model.bin> "<prompt_tokens>" <temp> <repeat_penalty> <top_p> <top_k> <max_tokens> <seed>
+./build/bitmamba <model.bin> "<prompt_tokens>" <mode> <temp> <repeat_penalty> <top_p> <top_k> <max_tokens>
 ```
 
 #### Practical Example:
