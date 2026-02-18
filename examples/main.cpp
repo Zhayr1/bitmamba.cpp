@@ -22,6 +22,8 @@ static gten::GPT2Tokenizer load_tokenizer(const std::string &vocab_file_path) {
   return gten::GPT2Tokenizer{vin};
 }
 
+#include <immintrin.h>
+
 int main(int argc, char **argv) {
   if (argc < 4) {
     std::cerr << "Usage: " << argv[0]
@@ -229,7 +231,7 @@ int main(int argc, char **argv) {
       history.erase(history.begin());
 
     // Stop tokens
-    if (next == 50256 || next == 0)
+    if (next == 50256)
       break;
   }
 
