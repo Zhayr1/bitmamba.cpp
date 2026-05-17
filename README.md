@@ -142,6 +142,49 @@ python scripts/decoder.py "15496 11 314 716"
 
 - Future Work: Add ARM/NEON support for Raspberry Pi deployment.
 
+## API Server (Optional)
+
+For OpenAI-compatible API access, a Python FastAPI server is available:
+
+```bash
+# Install Python dependencies
+cd python
+pip install -r requirements.txt
+
+# Start the server
+python server.py --model ../bitmamba_1b.bin --host 127.0.0.1 --port 8000
+```
+
+The server provides OpenAI-compatible endpoints:
+- `/v1/chat/completions` - Chat completions
+- `/v1/completions` - Text completions
+- `/v1/models` - List models
+
+See [python/README.md](python/README.md) for full documentation.
+
+## Layer Repetition Scanner (RYS — LLM Neuroanatomy)
+
+The C++ binary supports virtual layer repetition at zero extra weight-memory cost via the `--repeat-start`, `--repeat-end`, and `--repeat-count` flags. The same physical layer is executed multiple times with independent recurrent state, which can improve reasoning on certain prompts depending on the chosen slice.
+
+Use `scripts/brain_scanner.py` to grid-search the best slice for your model on BoolQ + ARC-Easy:
+
+```bash
+python3 scripts/brain_scanner.py \
+    --binary ./build/bitmamba \
+    --model bitmamba_1b.bin \
+    --range-start 0 --range-end 31 --min-span 2 \
+    --log brain_scan_1b.csv
+```
+
+Then run inference with the chosen slice:
+
+```bash
+./build/bitmamba --repeat-start 17 --repeat-end 21 \
+    bitmamba_1b.bin "Hello, I am" tokenizer 0.7 1.1 0.05 0.9 40 200
+```
+
+`brain_scanner.py` requires the optional dependencies `tiktoken` and `datasets` (already listed in `requirements.txt`).
+
 ## Python Inference Evaluation test
 
 Use the `scripts/fast_inference.py` script to evaluate the models:

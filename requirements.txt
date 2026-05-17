@@ -4,3 +4,7 @@ transformers
 flax
 tqdm
 msgpack
+
+# Optional: required only for scripts/brain_scanner.py (RYS layer-repetition scan)
+tiktoken
+datasets
