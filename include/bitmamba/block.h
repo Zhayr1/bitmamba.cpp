@@ -46,6 +46,21 @@ namespace bitmamba {
                   const LoraSlot* lora_in_proj  = nullptr,
                   const LoraSlot* lora_out_proj = nullptr,
                   float lora_scale = 0.0f);
+
+        // Batched prefill of T tokens through this block.
+        //   X                 : [T × d_model]    row-major (block input — residual stream slice)
+        //   OUT               : [T × d_model]    row-major (block delta — caller does residual add)
+        //   proj_out_scratch  : [T × d_in_proj]  caller-owned scratch (in_proj output)
+        //   y_scratch         : [T × d_inner]    caller-owned scratch (SSM output)
+        // The in_proj and out_proj BitLinears run as a single batched matmul each;
+        // conv1d + SSM remain per-token (sequential dependency in state) but cheap.
+        void prefill_block(const float* X, int T, float* OUT,
+                           float* proj_out_scratch,
+                           float* y_scratch,
+                           MambaState& state,
+                           const LoraSlot* lora_in_proj,
+                           const LoraSlot* lora_out_proj,
+                           float lora_scale);
     };
 
 } // namespace bitmamba

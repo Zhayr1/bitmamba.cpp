@@ -147,4 +147,65 @@ namespace bitmamba {
         }
     }
 
+    // ---------------------------------------------------------------------------
+    // apply_lora_delta_batched
+    // Batched version of apply_lora_delta. Reads X_norm [T × in_features] and
+    // adds scale·(B·A·X_norm[t]) to OUT[t] for every t.
+    //
+    // Implementation strategy:
+    //   A_proj[T × rank]    = X_norm[T × in] · A^T[in × rank]
+    //   OUT[T × out]       += scale · A_proj[T × rank] · B^T[rank × out]
+    //
+    // A is small (rank * in_features ≤ 128KB for the 1B model) so it stays hot
+    // in L1/L2 across all T iterations of the inner loop. The B matmul is the
+    // bigger one but each row is contiguous in memory (length = rank) which is
+    // friendly to SIMD.
+    // ---------------------------------------------------------------------------
+    void apply_lora_delta_batched(const float* X_norm,
+                                  int T,
+                                  const LoraSlot& slot,
+                                  float scale,
+                                  float* OUT) {
+        const int rank         = slot.rank;
+        const int in_features  = slot.in_features;
+        const int out_features = slot.out_features;
+        const float* Adata = slot.A.data();
+        const float* Bdata = slot.B.data();
+
+        // Stage 1: A_proj = X_norm · A^T  → [T × rank]
+        std::vector<float> A_proj((size_t)T * rank, 0.0f);
+        #pragma omp parallel for collapse(2)
+        for (int t = 0; t < T; ++t) {
+            for (int r = 0; r < rank; ++r) {
+                const float* row    = Adata + (size_t)r * in_features;   // A[r, :]
+                const float* xn_t   = X_norm + (size_t)t * in_features;  // X_norm[t, :]
+                __m256 acc = _mm256_setzero_ps();
+                int i = 0;
+                for (; i <= in_features - 8; i += 8) {
+                    __m256 va = _mm256_loadu_ps(row + i);
+                    __m256 vx = _mm256_loadu_ps(xn_t + i);
+                    acc = _mm256_fmadd_ps(va, vx, acc);
+                }
+                float tmp[8]; _mm256_storeu_ps(tmp, acc);
+                float s = tmp[0]+tmp[1]+tmp[2]+tmp[3]+tmp[4]+tmp[5]+tmp[6]+tmp[7];
+                for (; i < in_features; ++i) s += row[i] * xn_t[i];
+                A_proj[(size_t)t * rank + r] = s;
+            }
+        }
+
+        // Stage 2: OUT += scale · A_proj · B^T  → [T × out_features]
+        // For each output row o, B[o, :] is rank floats (contiguous).
+        // Loop order: parallel over (t, o) — independent writes, no contention.
+        #pragma omp parallel for collapse(2)
+        for (int t = 0; t < T; ++t) {
+            for (int o = 0; o < out_features; ++o) {
+                const float* b_row  = Bdata + (size_t)o * rank;
+                const float* ap_row = A_proj.data() + (size_t)t * rank;
+                float s = 0.0f;
+                for (int r = 0; r < rank; ++r) s += b_row[r] * ap_row[r];
+                OUT[(size_t)t * out_features + o] += scale * s;
+            }
+        }
+    }
+
 } // namespace bitmamba

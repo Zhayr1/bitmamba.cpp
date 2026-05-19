@@ -8,6 +8,7 @@
 
 namespace bitmamba {
 
+
     class BitMambaModel {
     public:
         Config config;
@@ -27,6 +28,16 @@ namespace bitmamba {
 
         // Working buffers
         std::vector<float> current_x, next_x;
+
+        // Pre-allocated scratch buffers for prefill_sequence. Sized lazily
+        // for the largest T seen so far so successive prefills reuse the same
+        // memory (avoids glibc malloc lock contention and freezes the address
+        // layout so caches/TLB stay warm between layers).
+        std::vector<float> prefill_X_buf;       // [T × d_model]
+        std::vector<float> prefill_OUT_buf;     // [T × d_model]
+        std::vector<float> prefill_proj_buf;    // [T × d_in_proj]
+        std::vector<float> prefill_y_buf;       // [T × d_inner]
+        int prefill_capacity_T = 0;
 
         // Optional LoRA adapter. Empty by default; populated by load_lora().
         // Applied to W_in and W_out of every Mamba block at forward time.
@@ -55,6 +66,18 @@ namespace bitmamba {
                          float min_p,
                          float top_p,
                          int top_k);
+
+        // Cheap forward used during prefill: runs embedding + layer loop only,
+        // updating the per-layer recurrent state. Skips final RMSNorm, lm_head
+        // matmul, repetition penalty, and sampling — none of which are needed
+        // when the next token is already known from the prompt.
+        void prefill_step(int token);
+
+        // Batched prefill of an entire token sequence. Iterates layer-major:
+        // for each layer, runs prefill_block on all T tokens at once so each
+        // layer's weights are read from DRAM only once instead of T times.
+        // Updates the per-layer recurrent state to match the sequential path.
+        void prefill_sequence(const std::vector<int>& tokens);
 
         // Returns {rank (0-indexed, lower=better), log-probability} of
         // target_token after a forward pass on input_token.

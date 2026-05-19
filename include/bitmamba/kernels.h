@@ -19,4 +19,20 @@ namespace bitmamba {
                            std::vector<float>& out,
                            const LoraSlot* lora = nullptr,
                            float lora_scale = 0.0f);
+
+    // Batched BitLinear matmul over T input tokens. Each weight row is loaded
+    // ONCE and reused for all T tokens, eliminating the T× weight-streaming cost
+    // of calling bitlinear_forward T times.
+    //   X:   [T × in_features]  row-major
+    //   OUT: [T × out_features] row-major
+    // RMSNorm + per-token int8 quantization happen first (cheap), then the
+    // outer loop over output rows is parallelized; the inner loop over T uses
+    // the already-unpacked weight row.
+    void bitlinear_forward_batched(const float* X,
+                                   int T,
+                                   const Tensor& w,
+                                   const Tensor& norm_w,
+                                   float* OUT,
+                                   const LoraSlot* lora = nullptr,
+                                   float lora_scale = 0.0f);
 }

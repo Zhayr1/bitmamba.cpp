@@ -63,4 +63,13 @@ namespace bitmamba {
                           float scale,
                           float* out);
 
+    // Batched LoRA delta: applies scale·(B·A·X_norm[t]) to OUT[t] for all t in [0,T).
+    //   X_norm: [T × in_features]   row-major
+    //   OUT:    [T × out_features]  row-major (must already hold base matmul result)
+    void apply_lora_delta_batched(const float* X_norm,
+                                  int T,
+                                  const LoraSlot& slot,
+                                  float scale,
+                                  float* OUT);
+
 } // namespace bitmamba

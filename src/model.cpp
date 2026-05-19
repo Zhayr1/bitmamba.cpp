@@ -7,6 +7,7 @@
 #include <cstring>
 #include <algorithm>
 #include <random>
+#include <immintrin.h>
 
 namespace bitmamba {
 
@@ -237,6 +238,99 @@ namespace bitmamba {
         }
 
         return sample_advanced(logits, temp, min_p, top_p, top_k);
+    }
+
+    // -----------------------------------------------------------------------
+    // prefill_step — embed + layer loop only. ~8-12% faster than forward_step
+    // because it skips the lm_head matmul, repetition penalty, and sampling
+    // (all of which produce a token id that prefill throws away anyway).
+    // -----------------------------------------------------------------------
+    void BitMambaModel::prefill_step(int token) {
+        std::memcpy(current_x.data(),
+                    &embed.data[token * config.d_model],
+                    config.d_model * sizeof(float));
+
+        for (int i = 0; i < (int)execution_path.size(); ++i) {
+            int li = execution_path[i];
+            const LoraSlot* lin  = lora.get(li, LORA_TARGET_IN);
+            const LoraSlot* lout = lora.get(li, LORA_TARGET_OUT);
+            layers[li].step(current_x, next_x, layer_states[i],
+                            lin, lout, lora.scale);
+            for (int j = 0; j < config.d_model; ++j)
+                current_x[j] += next_x[j];
+        }
+    }
+
+    // -----------------------------------------------------------------------
+    // prefill_sequence — layer-major batched prefill.
+    //
+    // For each layer l, runs prefill_block on all T tokens. The block does the
+    // in_proj BitLinear in a single batched call (weights read once), then the
+    // sequential conv+SSM scan per token, then the out_proj BitLinear batched.
+    // After each layer the residual stream is updated in place.
+    // -----------------------------------------------------------------------
+    void BitMambaModel::prefill_sequence(const std::vector<int>& tokens) {
+        const int T = (int)tokens.size();
+        if (T == 0) return;
+
+        const int d_model = config.d_model;
+
+        // Ensure the four scratch buffers are at least [T × …] in capacity.
+        // First-call (or growth) reallocates; subsequent prefills reuse the
+        // same memory so glibc malloc doesn't lock the arena per layer.
+        if (T > prefill_capacity_T) {
+            int d_in_proj_max = 0, d_inner_max = 0;
+            for (const auto& l : layers) {
+                if (l.in_proj.rows > d_in_proj_max) d_in_proj_max = l.in_proj.rows;
+                if (l.d_inner       > d_inner_max)   d_inner_max  = l.d_inner;
+            }
+            prefill_X_buf   .assign((size_t)T * d_model,       0.0f);
+            prefill_OUT_buf .assign((size_t)T * d_model,       0.0f);
+            prefill_proj_buf.assign((size_t)T * d_in_proj_max, 0.0f);
+            prefill_y_buf   .assign((size_t)T * d_inner_max,   0.0f);
+            prefill_capacity_T = T;
+        }
+        float* X   = prefill_X_buf.data();
+        float* OUT = prefill_OUT_buf.data();
+
+        // Gather embeddings into the [T × d_model] X buffer.
+        for (int t = 0; t < T; ++t) {
+            std::memcpy(X + (size_t)t * d_model,
+                        &embed.data[tokens[t] * d_model],
+                        d_model * sizeof(float));
+        }
+
+        // Iterate execution_path (so RYS is honored): each slot has its own state.
+        for (int i = 0; i < (int)execution_path.size(); ++i) {
+            int li = execution_path[i];
+            const LoraSlot* lin  = lora.get(li, LORA_TARGET_IN);
+            const LoraSlot* lout = lora.get(li, LORA_TARGET_OUT);
+            layers[li].prefill_block(X, T, OUT,
+                                     prefill_proj_buf.data(),
+                                     prefill_y_buf.data(),
+                                     layer_states[i],
+                                     lin, lout, lora.scale);
+            // Residual add: X += OUT  (in-place, parallel across tokens)
+            #pragma omp parallel for
+            for (int t = 0; t < T; ++t) {
+                float* xt = X   + (size_t)t * d_model;
+                float* ot = OUT + (size_t)t * d_model;
+                int j = 0;
+                for (; j <= d_model - 8; j += 8) {
+                    __m256 vx = _mm256_loadu_ps(xt + j);
+                    __m256 vo = _mm256_loadu_ps(ot + j);
+                    _mm256_storeu_ps(xt + j, _mm256_add_ps(vx, vo));
+                }
+                for (; j < d_model; ++j) xt[j] += ot[j];
+            }
+        }
+
+        // Keep current_x aligned with the LAST token's hidden state so the
+        // following per-token generation call has the correct starting context.
+        // (The recurrent state in layer_states is already correct.)
+        std::memcpy(current_x.data(),
+                    X + (size_t)(T - 1) * d_model,
+                    d_model * sizeof(float));
     }
 
     // -----------------------------------------------------------------------
