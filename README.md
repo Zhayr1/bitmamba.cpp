@@ -164,6 +164,8 @@ See [python/README.md](python/README.md) for full documentation.
 
 ## Layer Repetition Scanner (RYS — LLM Neuroanatomy)
 
+This implementation is based on the approach described by David Noel in his blog post on [RYS](https://dnhkng.github.io/posts/rys/).
+
 The C++ binary supports virtual layer repetition at zero extra weight-memory cost via the `--repeat-start`, `--repeat-end`, and `--repeat-count` flags. The same physical layer is executed multiple times with independent recurrent state, which can improve reasoning on certain prompts depending on the chosen slice.
 
 Use `scripts/brain_scanner.py` to grid-search the best slice for your model on BoolQ + ARC-Easy:

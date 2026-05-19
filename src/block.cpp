@@ -19,9 +19,13 @@ namespace bitmamba {
     // objects to implement virtual layer repetition without extra weight memory.
     void BitMambaBlock::step(const std::vector<float>& u,
                              std::vector<float>& out_buffer,
-                             MambaState& state) {
+                             MambaState& state,
+                             const LoraSlot* lora_in_proj,
+                             const LoraSlot* lora_out_proj,
+                             float lora_scale) {
         std::vector<float> proj_out(in_proj.rows);
-        bitlinear_forward(u, in_proj, in_proj_norm, proj_out);
+        bitlinear_forward(u, in_proj, in_proj_norm, proj_out,
+                          lora_in_proj, lora_scale);
 
         float* ptr_z  = proj_out.data();
         float* ptr_x  = proj_out.data() + d_inner;
@@ -66,7 +70,8 @@ namespace bitmamba {
             }
         }
 
-        bitlinear_forward(y, out_proj, out_proj_norm, out_buffer);
+        bitlinear_forward(y, out_proj, out_proj_norm, out_buffer,
+                          lora_out_proj, lora_scale);
     }
 
 } // namespace bitmamba

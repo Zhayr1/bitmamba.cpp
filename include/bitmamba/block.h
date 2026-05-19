@@ -1,6 +1,7 @@
 #pragma once
 #include <vector>
 #include "bitmamba/tensor.h"
+#include "bitmamba/lora.h"
 
 namespace bitmamba {
 
@@ -36,9 +37,15 @@ namespace bitmamba {
 
         // Execute one autoregressive step.
         // `state` holds the recurrent memory for this specific execution slot.
+        // `lora_in_proj` / `lora_out_proj`: optional LoRA slots applied to the
+        //   W_in and W_out BitLinears respectively (nullptr = no LoRA).
+        // `lora_scale`: alpha / rank, ignored when both slots are nullptr.
         void step(const std::vector<float>& u,
                   std::vector<float>& out_buffer,
-                  MambaState& state);
+                  MambaState& state,
+                  const LoraSlot* lora_in_proj  = nullptr,
+                  const LoraSlot* lora_out_proj = nullptr,
+                  float lora_scale = 0.0f);
     };
 
 } // namespace bitmamba

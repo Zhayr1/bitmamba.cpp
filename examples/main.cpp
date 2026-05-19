@@ -80,6 +80,8 @@ int main(int argc, char **argv) {
       extract_string_flag(argc, argv, "--tokens-file", "");
   int ppl_window_size =
       extract_int_flag(argc, argv, "--ppl-window", 0);
+  std::string lora_path =
+      extract_string_flag(argc, argv, "--lora", "");
 
   // -------------------------------------------------------------------------
   // Positional argument validation
@@ -106,6 +108,8 @@ int main(int argc, char **argv) {
     std::cerr << "  --repeat-start N  - First layer of the repeated slice (0-indexed)" << std::endl;
     std::cerr << "  --repeat-end   N  - Last layer of the repeated slice (inclusive)" << std::endl;
     std::cerr << "  --repeat-count N  - How many extra times to execute the slice (default: 1)" << std::endl;
+    std::cerr << "\nLoRA adapter (optional):" << std::endl;
+    std::cerr << "  --lora <path>     - Apply a .lora.bin adapter on top of the base weights" << std::endl;
     std::cerr << "\nChat mode (interactive, ChatML template):" << std::endl;
     std::cerr << "  --chat            - Enable interactive chat loop" << std::endl;
     std::cerr << "\nExamples:" << std::endl;
@@ -179,6 +183,13 @@ int main(int argc, char **argv) {
 
   // Load model — pass RYS parameters; defaults (-1, -1) = normal inference.
   BitMambaModel model(argv[1], repeat_start, repeat_end, repeat_count);
+
+  // Optionally load a LoRA adapter and validate shape compatibility.
+  if (!lora_path.empty()) {
+    if (!is_clean)
+      std::cerr << "[INFO] Loading LoRA adapter: " << lora_path << std::endl;
+    model.load_lora(lora_path);
+  }
 
   double ram_after_model = get_memory_usage_mb();
   if (!is_clean)

@@ -4,6 +4,7 @@
 #include "bitmamba/config.h"
 #include "bitmamba/tensor.h"
 #include "bitmamba/block.h"  // brings in MambaState and BitMambaBlock
+#include "bitmamba/lora.h"
 
 namespace bitmamba {
 
@@ -27,6 +28,10 @@ namespace bitmamba {
         // Working buffers
         std::vector<float> current_x, next_x;
 
+        // Optional LoRA adapter. Empty by default; populated by load_lora().
+        // Applied to W_in and W_out of every Mamba block at forward time.
+        LoraAdapter lora;
+
         // Constructor.
         //   repeat_start / repeat_end: inclusive layer range to repeat.
         //   Pass -1 (default) for normal inference without repetition.
@@ -36,6 +41,12 @@ namespace bitmamba {
                       int repeat_count =  1);
 
         void load_from_bin(const std::string& path);
+
+        // Load a LoRA adapter (.lora.bin produced by scripts/export_lora_bin.py).
+        // Verifies the adapter's n_layers matches the model and its per-slot
+        // shapes match in_proj.rows/cols and out_proj.rows/cols of each block.
+        // Aborts with a clear error on mismatch.
+        void load_lora(const std::string& path);
 
         int forward_step(int token,
                          const std::vector<int>& history,

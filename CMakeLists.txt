@@ -16,6 +16,7 @@ add_library(bitmamba_lib
     src/basic_utils.cpp
     src/quantization.cpp
     src/kernels.cpp
+    src/lora.cpp
     src/block.cpp
     src/model.cpp
 )

@@ -32,10 +32,15 @@ namespace bitmamba {
         for (; i < size; ++i) out[i] = x[i] * rms * weight.data[i];
     }
 
-    void bitlinear_forward(const std::vector<float>& x, const Tensor& w, const Tensor& norm_w, std::vector<float>& out) {
+    void bitlinear_forward(const std::vector<float>& x,
+                           const Tensor& w,
+                           const Tensor& norm_w,
+                           std::vector<float>& out,
+                           const LoraSlot* lora,
+                           float lora_scale) {
         int n = x.size();
         std::vector<float> x_norm(n);
-        rms_norm(x, norm_w, x_norm); 
+        rms_norm(x, norm_w, x_norm);
 
         float max_abs = 0.0f;
         for (float v : x_norm) max_abs = std::max(max_abs, std::abs(v));
@@ -116,6 +121,12 @@ namespace bitmamba {
             }
             
             out[r] = (float)total / (scale_x * w.scale);
+        }
+
+        // Optional LoRA delta: out += lora_scale · (B · A · x_norm)
+        // Uses the same pre-quantization x_norm that fed the bitlinear above.
+        if (lora) {
+            apply_lora_delta(x_norm.data(), *lora, lora_scale, out.data());
         }
     }
 

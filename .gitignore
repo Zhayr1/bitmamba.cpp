@@ -1,7 +1,8 @@
 *.bin
 *.pt
 *.msgpack
-bitmamba
+/bitmamba
 __pycache__
 build
 venv
+internal-docs/

@@ -207,8 +207,14 @@ namespace bitmamba {
 
         // Core loop: use execution_path so repeated layer indices are handled
         // transparently — each slot i has its own layer_states[i].
+        // LoRA slots are looked up by PHYSICAL layer index so a repeated slice
+        // (RYS) reuses the same adapter weights consistently.
         for (int i = 0; i < (int)execution_path.size(); ++i) {
-            layers[execution_path[i]].step(current_x, next_x, layer_states[i]);
+            int li = execution_path[i];
+            const LoraSlot* lin  = lora.get(li, LORA_TARGET_IN);
+            const LoraSlot* lout = lora.get(li, LORA_TARGET_OUT);
+            layers[li].step(current_x, next_x, layer_states[i],
+                            lin, lout, lora.scale);
             for (int j = 0; j < config.d_model; ++j)
                 current_x[j] += next_x[j];
         }
@@ -249,7 +255,11 @@ namespace bitmamba {
                     config.d_model * sizeof(float));
 
         for (int i = 0; i < (int)execution_path.size(); ++i) {
-            layers[execution_path[i]].step(current_x, next_x, layer_states[i]);
+            int li = execution_path[i];
+            const LoraSlot* lin  = lora.get(li, LORA_TARGET_IN);
+            const LoraSlot* lout = lora.get(li, LORA_TARGET_OUT);
+            layers[li].step(current_x, next_x, layer_states[i],
+                            lin, lout, lora.scale);
             for (int j = 0; j < config.d_model; ++j)
                 current_x[j] += next_x[j];
         }
@@ -279,6 +289,42 @@ namespace bitmamba {
             if (i != target_token && probs[i] > target_prob) ++rank;
 
         return {rank, log_prob};
+    }
+
+    // -----------------------------------------------------------------------
+    // load_lora — load a .lora.bin file and validate shapes against this model.
+    // -----------------------------------------------------------------------
+    void BitMambaModel::load_lora(const std::string& path) {
+        load_lora_bin(path, lora);
+
+        if (lora.n_layers != config.n_layers) {
+            std::cerr << "❌ Error: LoRA n_layers=" << lora.n_layers
+                      << " does not match model n_layers=" << config.n_layers << "\n";
+            std::exit(1);
+        }
+        // Verify per-slot shapes match base projection dimensions.
+        for (int li = 0; li < config.n_layers; ++li) {
+            const LoraSlot& sin  = lora.slots[li][LORA_TARGET_IN];
+            const LoraSlot& sout = lora.slots[li][LORA_TARGET_OUT];
+            if (sin.out_features != layers[li].in_proj.rows ||
+                sin.in_features  != layers[li].in_proj.cols) {
+                std::cerr << "❌ Error: LoRA W_in shape mismatch at layer " << li
+                          << " (lora=" << sin.out_features << "x" << sin.in_features
+                          << ", base=" << layers[li].in_proj.rows << "x"
+                          << layers[li].in_proj.cols << ")\n";
+                std::exit(1);
+            }
+            if (sout.out_features != layers[li].out_proj.rows ||
+                sout.in_features  != layers[li].out_proj.cols) {
+                std::cerr << "❌ Error: LoRA W_out shape mismatch at layer " << li
+                          << " (lora=" << sout.out_features << "x" << sout.in_features
+                          << ", base=" << layers[li].out_proj.rows << "x"
+                          << layers[li].out_proj.cols << ")\n";
+                std::exit(1);
+            }
+        }
+        std::cerr << "[LoRA] Shape check passed for " << config.n_layers
+                  << " layers (W_in + W_out)\n";
     }
 
     // -----------------------------------------------------------------------
