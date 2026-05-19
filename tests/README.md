@@ -48,7 +48,8 @@ auto-skips in that case.
 | `test_04_prefill_modes.sh` | Batched (default) and `--sequential-prefill` produce identical greedy output |
 | `test_05_lora.sh`          | `--lora` loads adapter, shape check passes, output produced; identical between prefill modes; corrupt adapter is rejected |
 | `test_06_scripts.sh`       | Every `scripts/*.py` and `python/*.py` passes `python3 -m py_compile` |
-| `test_07_server.sh`        | `python/simple_server.py` starts; `/health` and `/` respond |
+| `test_07_server.sh`        | `python/simple_server.py` starts; `/health`, `/`, and `/generate` (end-to-end through the C++ binary) respond |
+| `test_08_fastapi_server.sh`| `python/server.py` (FastAPI) OpenAI-compatible endpoints `/v1/models`, `/v1/completions`, `/v1/chat/completions` — auto-skips if FastAPI/uvicorn not installed |
 
 ## Exit conventions
 
